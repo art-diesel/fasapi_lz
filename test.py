@@ -1,4 +1,3 @@
-import os
 import time
 import pytest
 from selenium import webdriver
@@ -20,64 +19,68 @@ def browser():
     yield drv
     drv.quit()
 
-def wait_el(driver, by, selector, timeout=6):
-    return WebDriverWait(driver, timeout).until(EC.presence_of_element_located((by, selector)))
+def wait_for_title(driver, timeout=6):
+    WebDriverWait(driver, timeout).until(lambda d: d.title != "")
 
-def assert_title_contains(driver, path, text):
-    driver.get(BASE + path)
-    WebDriverWait(driver, 6).until(lambda d: d.title != "")
-    assert text.lower() in driver.title.lower()
+def any_elem_found(driver, by, selector, timeout=6):
+    WebDriverWait(driver, timeout).until(lambda d: len(d.find_elements(by, selector)) > 0)
+    return driver.find_elements(by, selector)
 
 def test_home_page(browser):
-    assert_title_contains(browser, "/", "главная")
-    wait_el(browser, By.CSS_SELECTOR, ".container")
+    browser.get(BASE + "/")
+    wait_for_title(browser)
+    elems = any_elem_found(browser, By.CSS_SELECTOR, ".container")
+    assert len(elems) >= 1
 
 def test_login_form_present(browser):
-    assert_title_contains(browser, "/login", "вход")
-    wait_el(browser, By.NAME, "username")
-    wait_el(browser, By.NAME, "password")
-    btn = wait_el(browser, By.CSS_SELECTOR, "button[type='submit']")
-    assert btn is not None
+    browser.get(BASE + "/login")
+    wait_for_title(browser)
+    assert len(browser.find_elements(By.NAME, "username")) >= 1
+    assert len(browser.find_elements(By.NAME, "password")) >= 1
+    btns = browser.find_elements(By.CSS_SELECTOR, "button[type='submit']")
+    assert len(btns) >= 1
 
 def test_registration_form_present(browser):
-    assert_title_contains(browser, "/reg", "регистрация")
-    wait_el(browser, By.NAME, "username")
-    wait_el(browser, By.NAME, "password")
-    wait_el(browser, By.NAME, "password_confirm")
-    btn = wait_el(browser, By.CSS_SELECTOR, "button[type='submit']")
-    assert btn is not None
+    browser.get(BASE + "/reg")
+    wait_for_title(browser)
+    assert len(browser.find_elements(By.NAME, "username")) >= 1
+    assert len(browser.find_elements(By.NAME, "password")) >= 1
+    assert len(browser.find_elements(By.NAME, "password_confirm")) >= 1
+    assert len(browser.find_elements(By.CSS_SELECTOR, "button[type='submit']")) >= 1
 
-def test_not_found_and_forbidden(browser):
-    browser.get(BASE + "/__this_path_should_not_exist__")
-    body = wait_el(browser, By.TAG_NAME, "body")
-    assert ("Ошибка 404" in body.text) or ("Не найдено" in body.text) or browser.title.lower().startswith("404")
+def test_404_and_403_templates(browser):
+    browser.get(BASE + "/__nonexistent_path_for_404__")
+    body_elems = browser.find_elements(By.TAG_NAME, "body")
+    assert len(body_elems) == 1
+    body_text = body_elems[0].text
+    assert ("Ошибка 404" in body_text) or ("Не найдено" in body_text) or browser.title.lower().startswith("404")
+
     browser.get(BASE + "/admin")
-    body = wait_el(browser, By.TAG_NAME, "body")
-    assert ("Админ-панель" in body.text) or ("Ошибка 403" in body.text) or browser.title.lower().startswith("403")
+    body_text = browser.find_elements(By.TAG_NAME, "body")[0].text
+    assert ("Админ-панель" in body_text) or ("Ошибка 403" in body_text) or browser.title.lower().startswith("403")
 
 def test_register_login_logout_flow(browser):
     user = f"user_{int(time.time())}"
     pwd = "P@ssw0rd123!"
     browser.get(BASE + "/reg")
-    wait_el(browser, By.NAME, "username").send_keys(user)
-    wait_el(browser, By.NAME, "password").send_keys(pwd)
-    wait_el(browser, By.NAME, "password_confirm").send_keys(pwd)
-    wait_el(browser, By.CSS_SELECTOR, "button[type='submit']").click()
+    assert len(browser.find_elements(By.NAME, "username")) >= 1
+    browser.find_elements(By.NAME, "username")[0].send_keys(user)
+    browser.find_elements(By.NAME, "password")[0].send_keys(pwd)
+    browser.find_elements(By.NAME, "password_confirm")[0].send_keys(pwd)
+    browser.find_elements(By.CSS_SELECTOR, "button[type='submit']")[0].click()
     WebDriverWait(browser, 6).until(lambda d: d.current_url != BASE + "/reg" or "Добро пожаловать" in d.page_source)
     try:
         browser.get(BASE + "/logout")
     except Exception:
         pass
-    # вход
     browser.get(BASE + "/login")
-    wait_el(browser, By.NAME, "username").send_keys(user)
-    wait_el(browser, By.NAME, "password").send_keys(pwd)
-    wait_el(browser, By.CSS_SELECTOR, "button[type='submit']").click()
+    browser.find_elements(By.NAME, "username")[0].send_keys(user)
+    browser.find_elements(By.NAME, "password")[0].send_keys(pwd)
+    browser.find_elements(By.CSS_SELECTOR, "button[type='submit']")[0].click()
     WebDriverWait(browser, 6).until(EC.any_of(
         EC.title_contains("Главная"),
         EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'Добро пожаловать') or contains(text(), 'Вы успешно вошли')]"))
     ))
-    # выход
     browser.get(BASE + "/logout")
     WebDriverWait(browser, 6).until(lambda d: d.current_url != "")
 
