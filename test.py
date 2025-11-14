@@ -7,10 +7,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
-BASE = os.environ.get("APP_URL", "http://localhost:8000")
+BASE = os.environ.get("http://localhost:8000")
 
 @pytest.fixture(scope="session")
-def browser():
+async def browser():
     opts = Options()
     opts.add_argument("--headless=new")
     opts.add_argument("--no-sandbox")
@@ -19,20 +19,20 @@ def browser():
     yield drv
     drv.quit()
 
-def wait_for_title(driver, timeout=6):
+async def wait_for_title(driver, timeout=6):
     WebDriverWait(driver, timeout).until(lambda d: d.title != "")
 
-def any_elem_found(driver, by, selector, timeout=6):
+async def any_elem_found(driver, by, selector, timeout=6):
     WebDriverWait(driver, timeout).until(lambda d: len(d.find_elements(by, selector)) > 0)
     return driver.find_elements(by, selector)
 
-def test_home_page(browser):
+async def test_home_page(browser):
     browser.get(BASE + "/")
     wait_for_title(browser)
     elems = any_elem_found(browser, By.CSS_SELECTOR, ".container")
     assert len(elems) >= 1
 
-def test_login_form_present(browser):
+async def test_login_form_present(browser):
     browser.get(BASE + "/login")
     wait_for_title(browser)
     assert len(browser.find_elements(By.NAME, "username")) >= 1
@@ -40,7 +40,7 @@ def test_login_form_present(browser):
     btns = browser.find_elements(By.CSS_SELECTOR, "button[type='submit']")
     assert len(btns) >= 1
 
-def test_registration_form_present(browser):
+async def test_registration_form_present(browser):
     browser.get(BASE + "/reg")
     wait_for_title(browser)
     assert len(browser.find_elements(By.NAME, "username")) >= 1
@@ -48,7 +48,7 @@ def test_registration_form_present(browser):
     assert len(browser.find_elements(By.NAME, "password_confirm")) >= 1
     assert len(browser.find_elements(By.CSS_SELECTOR, "button[type='submit']")) >= 1
 
-def test_404_and_403_templates(browser):
+async def test_404_and_403_templates(browser):
     browser.get(BASE + "/__nonexistent_path_for_404__")
     body_elems = browser.find_elements(By.TAG_NAME, "body")
     assert len(body_elems) == 1
@@ -59,7 +59,7 @@ def test_404_and_403_templates(browser):
     body_text = browser.find_elements(By.TAG_NAME, "body")[0].text
     assert ("Админ-панель" in body_text) or ("Ошибка 403" in body_text) or browser.title.lower().startswith("403")
 
-def test_register_login_logout_flow(browser):
+async def test_register_login_logout_flow(browser):
     user = f"user_{int(time.time())}"
     pwd = "P@ssw0rd123!"
     browser.get(BASE + "/reg")
