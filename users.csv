@@ -1,0 +1,3 @@
+user,pass,hash_pass,role
+artiom_diesel,123123,96cae35ce8a9b0244178bf28e4966c2ce1b8385723a96a6b838858cdd6ca0a1e,user
+admin,111111,bcb15f821479b4d5772bd0ca866c00ad5f926e3580720659cc80d39c9d09802a,admin
